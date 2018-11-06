@@ -7,12 +7,12 @@ OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
   targetPosYOffset = 2.0f;
   targetPosY = 0;
 
-  shooting = false;
-  projectilePosX = 0;
-  projectilePosY = 0;
+  jumping = false;
 
   numHits = 0;
 }
+
+OpenGLWidget::~OpenGLWidget() {}
 
 void OpenGLWidget::initializeGL() {
   initializeOpenGLFunctions();
@@ -53,13 +53,6 @@ void OpenGLWidget::paintGL() {
   glUniform4f(locTranslation, 0.8, targetPosY, 0, 0);
   glUniform1f(locScaling, 0.2);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0);
-
-  // Projectile
-  if (shooting) {
-    glUniform4f(locTranslation, projectilePosX, projectilePosY, 0, 0);
-    glUniform1f(locScaling, 0.05);
-    glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0);
-  }
 }
 
 void OpenGLWidget::createShaders() {
@@ -269,24 +262,19 @@ void OpenGLWidget::animate() {
   }
 
   // Update projectile
-  if (shooting) {
-    // Move projectile
-    projectilePosX += 3.0f * elapsedTime;
+  if (jumping) {
+    // move up
+    playerPosYOffset += 3.0f * elapsedTime;
 
-    // Check whether the projectile hit the target
-    if (projectilePosX > 0.8f) {
-      if (std::fabs(projectilePosY - targetPosY) < 0.125f) {
-        numHits++;
-        qDebug("Hit!");
-        emit updateHitsLabel(QString("Hits: %1").arg(numHits));
-        shooting = false;
-      }
+    // move down
+    if (playerPosYOffset > 1.0f) {
+      jumping = false;
     }
+  } else {
+    playerPosYOffset -= 3.0f * elapsedTime;
 
-    // Check whether the projectile missed the target
-    if (projectilePosX > 1.0f) {
-      qDebug("Missed");
-      shooting = false;
+    if (playerPosYOffset < -1.0f) {
+      playerPosYOffset = -1.0f;
     }
   }
 
@@ -302,10 +290,9 @@ void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
     playerPosYOffset = -2.0f;
 
   if (event->key() == Qt::Key_Space) {
-    if (!shooting) {
-      shooting = true;
-      projectilePosX = -0.7f;
-      projectilePosY = playerPosY;
+    if (!jumping) {
+      jumping = true;
+      playerPosYOffset = 0.7f;
     }
   }
 

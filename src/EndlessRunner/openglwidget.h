@@ -5,8 +5,6 @@
 #include <QOpenGLWidget>
 #include <QtOpenGL>
 
-#include <memory>
-
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Q_OBJECT
 
@@ -28,16 +26,15 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   float targetPosYOffset;  // Target displacement along Y axis
   float targetPosY;        // Current target Y position
 
-  bool shooting;         // Whether the projectile is being animated
-  float projectilePosX;  // Projectile X position
-  float projectilePosY;  // Projectile Y position
-  int numHits;           // Number of hits
+  bool jumping;  // Whether the projectile is being animated
+  int numHits;   // Number of hits
 
   QTimer timer;
   QTime time;
 
  public:
-  explicit OpenGLWidget(QWidget* parent = 0);
+  explicit OpenGLWidget(QWidget* parent = nullptr);
+  ~OpenGLWidget();
 
   void createVBOs();
   void createShaders();
