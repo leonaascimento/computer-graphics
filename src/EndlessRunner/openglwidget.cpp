@@ -4,7 +4,7 @@ OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
   playerPosYOffset = 0;
   playerPosY = 0;
 
-  targetPosYOffset = 2.0f;
+  targetPosYOffset = -2.0f;
   targetPosY = 0;
 
   jumping = false;
@@ -50,7 +50,7 @@ void OpenGLWidget::paintGL() {
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0);
 
   // Target
-  glUniform4f(locTranslation, 0.8, targetPosY, 0, 0);
+  glUniform4f(locTranslation, targetPosY, -0.8, 0, 0);
   glUniform1f(locScaling, 0.2);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0);
 }
@@ -250,13 +250,10 @@ void OpenGLWidget::animate() {
   targetPosY += targetPosYOffset * elapsedTime;
 
   if (targetPosYOffset > 0) {
-    if (targetPosY > 0.8f) {
-      targetPosY = 0.8f;
-      targetPosYOffset = -targetPosYOffset;
-    }
+    targetPosYOffset = -targetPosYOffset;
   } else if (targetPosYOffset < 0) {
-    if (targetPosY < -0.8f) {
-      targetPosY = -0.8f;
+    if (targetPosY < -1.8f) {
+      targetPosY = 1.0f;
       targetPosYOffset = -targetPosYOffset;
     }
   }
