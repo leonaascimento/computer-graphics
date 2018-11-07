@@ -5,6 +5,8 @@
 #include <QOpenGLWidget>
 #include <QtOpenGL>
 
+#include <player.h>
+
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Q_OBJECT
 
@@ -29,10 +31,12 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   float obstaclePosX;
 
   bool jumping;
-  int score;
+  float score;
 
   QTimer timer;
   QTime time;
+
+  Player* m_player;
 
  public:
   explicit OpenGLWidget(QWidget* parent = nullptr);

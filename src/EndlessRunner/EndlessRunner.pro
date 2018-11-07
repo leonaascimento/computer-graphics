@@ -27,12 +27,14 @@ CONFIG += c++14
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    openglwidget.cpp
+    openglwidget.cpp \
+    player.cpp
 
 HEADERS += \
         mainwindow.h \
     openglwidget.h \
-    openglwidget.h
+    openglwidget.h \
+    player.h
 
 FORMS += \
         mainwindow.ui

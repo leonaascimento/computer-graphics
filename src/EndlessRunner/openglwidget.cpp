@@ -2,12 +2,12 @@
 
 OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
   playerVelocityY = 0;
-  playerVelocityX = -2.0f;
+  playerVelocityX = -1.5f;
 
   gravity = 20.0f;
 
-  playerPosY = 0;
-  obstaclePosX = 0;
+  playerPosY = -0.8f;
+  obstaclePosX = 1.1f;
 
   jumping = false;
 
@@ -50,12 +50,12 @@ void OpenGLWidget::paintGL() {
 
   // Player
   glUniform4f(locTranslation, -0.8f, playerPosY, 0, 0);
-  glUniform1f(locScaling, 0.2f);
+  glUniform1f(locScaling, 0.1f);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
   // Target
   glUniform4f(locTranslation, obstaclePosX, -0.8f, 0, 0);
-  glUniform1f(locScaling, 0.2f);
+  glUniform1f(locScaling, 0.1f);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
   glBindVertexArray(0);
@@ -65,7 +65,9 @@ void OpenGLWidget::paintGL() {
 
   painter.setPen(Qt::white);
   painter.setFont(QFont("Arial", 12));
-  painter.drawText(rect(), Qt::AlignLeft, "SCORE");
+  painter.drawText(
+      rect(), Qt::AlignRight,
+      QString("%1").arg(QString::number(static_cast<int>(std::floor(score)))));
 }
 
 void OpenGLWidget::createShaders() {
@@ -195,10 +197,10 @@ void OpenGLWidget::createVBOs() {
   colors = std::make_unique<QVector4D[]>(4);
   indices = std::make_unique<unsigned int[]>(2 * 3);
 
-  vertices[0] = QVector4D(-0.5, -0.5, 0, 1);
-  vertices[1] = QVector4D(0.5, -0.5, 0, 1);
-  vertices[2] = QVector4D(0.5, 0.5, 0, 1);
-  vertices[3] = QVector4D(-0.5, 0.5, 0, 1);
+  vertices[0] = QVector4D(-1, -1, 0, 1);
+  vertices[1] = QVector4D(1, -1, 0, 1);
+  vertices[2] = QVector4D(1, 1, 0, 1);
+  vertices[3] = QVector4D(-1, 1, 0, 1);
 
   colors[0] = QVector4D(1, 0, 0, 1);  // red
   colors[1] = QVector4D(0, 1, 0, 1);  // green
@@ -258,8 +260,8 @@ void OpenGLWidget::animate() {
   // Update obstacle position
   obstaclePosX += playerVelocityX * elapsedTime;
 
-  if (obstaclePosX < -1.8f) {
-    obstaclePosX = 1.0f;
+  if (obstaclePosX < -1.1f) {
+    obstaclePosX = 1.1f;
   }
 
   // Update player position
@@ -275,6 +277,15 @@ void OpenGLWidget::animate() {
       playerVelocityY = 0;
     }
   }
+
+  // Collision
+  if (std::fabs(obstaclePosX - -0.8f) <= 0.2f) {
+    if (std::fabs(playerPosY - -0.8f) <= 0.2f) {
+      qDebug("Collide on X and Y axis");
+    }
+  }
+
+  score += 10 * elapsedTime;
 
   update();
 }
