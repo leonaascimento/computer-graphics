@@ -5,6 +5,9 @@ Player::Player() {
   positionX = 0;
   positionY = 0;
   velocityY = 0;
+  colliderWidth = 0;
+  colliderHeight = 0;
+  scale = 1;
 }
 
 void Player::update(GLfloat deltaTime) {

@@ -10,6 +10,8 @@ class Player {
   State state;
   GLfloat positionX, positionY;
   GLfloat velocityY;
+  GLfloat colliderWidth, colliderHeight;
+  GLfloat scale;
 
   Player();
 

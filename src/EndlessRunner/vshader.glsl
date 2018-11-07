@@ -3,7 +3,7 @@
 layout (location = 0) in vec4 position;
 
 uniform float scaling;
-uniform vec4 translation;
+uniform vec2 translation;
 
 void main()
 {

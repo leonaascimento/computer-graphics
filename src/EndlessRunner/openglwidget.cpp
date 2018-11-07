@@ -1,13 +1,25 @@
 #include "openglwidget.h"
 
 OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
-  player = new Player;
+  reset();
+}
 
+void OpenGLWidget::reset() {
+  player = new Player;
   player->positionX = -0.8f;
   player->positionY = -0.8f;
   player->velocityY = 0;
+  player->scale = 0.1f;
+  player->colliderHeight = 0.2f;
+  player->colliderWidth = 0.2f;
 
-  obstaclePosX = 1.1f;
+  obstacle = new Obstacle;
+  obstacle->positionX = 1.1f;
+  obstacle->positionY = -0.8f;
+  obstacle->velocityX = -1.5f;
+  obstacle->scale = 0.1f;
+  obstacle->colliderHeight = 0.2f;
+  obstacle->colliderWidth = 0.2f;
 
   score = 0;
 }
@@ -16,18 +28,18 @@ OpenGLWidget::~OpenGLWidget() {}
 
 void OpenGLWidget::initializeGL() {
   initializeOpenGLFunctions();
-  glClearColor(0, 0, 0, 1);
 
   qDebug("OpenGL version: %s", glGetString(GL_VERSION));
   qDebug("GLSL %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
+  glClearColor(0, 0, 0, 1);
+
   createShaders();
   createVBOs();
 
-  connect(&timer, SIGNAL(timeout()), this, SLOT(animate()));
-  timer.start(0);
-
-  time.start();
+  connect(&updateTimer, SIGNAL(timeout()), this, SLOT(update()));
+  updateTimer.start(0);
+  stopwatch.start();
 }
 
 void OpenGLWidget::resizeGL(int width, int height) {
@@ -39,21 +51,20 @@ void OpenGLWidget::paintGL() {
   painter.beginNativePainting();
   glClear(GL_COLOR_BUFFER_BIT);
 
-  GLint locScaling = glGetUniformLocation(shaderProgram, "scaling");
-  GLint locTranslation = glGetUniformLocation(shaderProgram, "translation");
+  GLint scalingId = glGetUniformLocation(shaderProgram, "scaling");
+  GLint translationId = glGetUniformLocation(shaderProgram, "translation");
 
   glUseProgram(shaderProgram);
-
   glBindVertexArray(vao);
 
-  // Player
-  glUniform4f(locTranslation, player->positionX, player->positionY, 0, 0);
-  glUniform1f(locScaling, 0.1f);
+  // Draw Player
+  glUniform2f(translationId, player->positionX, player->positionY);
+  glUniform1f(scalingId, player->scale);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
-  // Target
-  glUniform4f(locTranslation, obstaclePosX, -0.8f, 0, 0);
-  glUniform1f(locScaling, 0.1f);
+  // Draw Obstacle
+  glUniform2f(translationId, obstacle->positionX, obstacle->positionY);
+  glUniform1f(scalingId, obstacle->scale);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
   glBindVertexArray(0);
@@ -66,6 +77,12 @@ void OpenGLWidget::paintGL() {
   painter.drawText(
       rect(), Qt::AlignRight,
       QString("%1").arg(QString::number(static_cast<int>(std::floor(score)))));
+
+  if (player->state == Player::Dead) {
+    painter.setPen(Qt::red);
+    painter.setFont(QFont("Arial", 36));
+    painter.drawText(rect(), Qt::AlignCenter, "GAME OVER");
+  }
 }
 
 void OpenGLWidget::createShaders() {
@@ -249,39 +266,36 @@ void OpenGLWidget::destroyVBOs() {
   vao = 0;
 }
 
-void OpenGLWidget::animate() {
-  float elapsedTime = time.restart() / 1000.0f;
+void OpenGLWidget::update() {
+  float deltaTime = stopwatch.restart() / 1000.0f;
 
-  // qDebug("playerVelocityY %f", static_cast<GLdouble>(playerVelocityY));
-  // qDebug("playerPosY %f", static_cast<GLdouble>(playerPosY));
+  if (player->state != Player::Dead) {
+    obstacle->update(deltaTime);
+    player->update(deltaTime);
 
-  // Update obstacle position
-  obstaclePosX += -1.5f * elapsedTime;
+    obstacle->velocityX -= 0.1f * deltaTime;
 
-  if (obstaclePosX < -1.1f) {
-    obstaclePosX = 1.1f;
-  }
-
-  // Update player position
-  player->update(elapsedTime);
-
-  // Collision
-  if (std::fabs(obstaclePosX - -0.8f) <= 0.2f) {
-    if (std::fabs(player->positionY - -0.8f) <= 0.2f) {
-      // qDebug("Collide on X and Y axis");
+    // Collision
+    if (std::fabs(obstacle->positionX - player->positionX) <=
+        std::max(obstacle->colliderWidth, player->colliderWidth)) {
+      if (std::fabs(player->positionY - obstacle->positionY) <=
+          std::max(obstacle->colliderHeight, player->colliderWidth)) {
+        player->state = Player::Dead;
+      }
     }
+
+    score += 10 * deltaTime;
   }
 
-  score += 10 * elapsedTime;
-
-  update();
+  QOpenGLWidget::update();
 }
 
 // QOpenGLWidget focusPolicy property must be set to StrongFocus
 void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
-  if (event->key() == Qt::Key_Space) {
+  if (event->key() == Qt::Key_Space)
     player->jump();
-  } else if (event->key() == Qt::Key_Escape) {
+  else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+    reset();
+  else if (event->key() == Qt::Key_Escape)
     QApplication::quit();
-  }
 }

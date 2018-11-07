@@ -5,12 +5,14 @@
 #include <QOpenGLWidget>
 #include <QtOpenGL>
 
+#include <obstacle.h>
 #include <player.h>
 
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Q_OBJECT
 
   Player* player;
+  Obstacle* obstacle;
 
   GLuint vboVertices = 0;
   GLuint vboColors = 0;
@@ -24,18 +26,10 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
   GLuint shaderProgram;
 
-  // float playerVelocityY;
-  // float playerVelocityX;
-
-  float gravity;
-
-  // float playerPosY;
-  float obstaclePosX;
-
   float score;
 
-  QTimer timer;
-  QTime time;
+  QTimer updateTimer;
+  QTime stopwatch;
 
  public:
   explicit OpenGLWidget(QWidget* parent = nullptr);
@@ -53,10 +47,11 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void paintGL();
 
   void keyPressEvent(QKeyEvent* event);
+  void reset();
 
  signals:
 
  public slots:
-  void animate();
+  void update();
 };
 #endif
