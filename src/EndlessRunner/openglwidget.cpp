@@ -1,15 +1,13 @@
 #include "openglwidget.h"
 
 OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
-  playerVelocityY = 0;
-  playerVelocityX = -1.5f;
+  player = new Player;
 
-  gravity = 20.0f;
+  player->positionX = -0.8f;
+  player->positionY = -0.8f;
+  player->velocityY = 0;
 
-  playerPosY = -0.8f;
   obstaclePosX = 1.1f;
-
-  jumping = false;
 
   score = 0;
 }
@@ -49,7 +47,7 @@ void OpenGLWidget::paintGL() {
   glBindVertexArray(vao);
 
   // Player
-  glUniform4f(locTranslation, -0.8f, playerPosY, 0, 0);
+  glUniform4f(locTranslation, player->positionX, player->positionY, 0, 0);
   glUniform1f(locScaling, 0.1f);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
@@ -258,30 +256,19 @@ void OpenGLWidget::animate() {
   // qDebug("playerPosY %f", static_cast<GLdouble>(playerPosY));
 
   // Update obstacle position
-  obstaclePosX += playerVelocityX * elapsedTime;
+  obstaclePosX += -1.5f * elapsedTime;
 
   if (obstaclePosX < -1.1f) {
     obstaclePosX = 1.1f;
   }
 
   // Update player position
-  playerPosY += playerVelocityY * elapsedTime;
-  playerVelocityY += -gravity * elapsedTime;
-
-  if (jumping) {
-    if (playerVelocityY <= 0)
-      jumping = false;
-  } else {
-    if (playerPosY < -0.8f) {
-      playerPosY = -0.8f;
-      playerVelocityY = 0;
-    }
-  }
+  player->update(elapsedTime);
 
   // Collision
   if (std::fabs(obstaclePosX - -0.8f) <= 0.2f) {
-    if (std::fabs(playerPosY - -0.8f) <= 0.2f) {
-      qDebug("Collide on X and Y axis");
+    if (std::fabs(player->positionY - -0.8f) <= 0.2f) {
+      // qDebug("Collide on X and Y axis");
     }
   }
 
@@ -290,18 +277,11 @@ void OpenGLWidget::animate() {
   update();
 }
 
-// Strong focus is required
+// QOpenGLWidget focusPolicy property must be set to StrongFocus
 void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
   if (event->key() == Qt::Key_Space) {
-    if (playerPosY <= -0.8f) {
-      jumping = true;
-      playerVelocityY = 5.0f;
-    }
-  }
-
-  if (event->key() == Qt::Key_Escape) {
+    player->jump();
+  } else if (event->key() == Qt::Key_Escape) {
     QApplication::quit();
   }
 }
-
-void OpenGLWidget::keyReleaseEvent(QKeyEvent* event) {}

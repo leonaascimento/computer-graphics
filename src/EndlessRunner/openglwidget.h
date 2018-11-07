@@ -10,6 +10,8 @@
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Q_OBJECT
 
+  Player* player;
+
   GLuint vboVertices = 0;
   GLuint vboColors = 0;
   GLuint vboIndices = 0;
@@ -22,21 +24,18 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
   GLuint shaderProgram;
 
-  float playerVelocityY;
-  float playerVelocityX;
+  // float playerVelocityY;
+  // float playerVelocityX;
 
   float gravity;
 
-  float playerPosY;
+  // float playerPosY;
   float obstaclePosX;
 
-  bool jumping;
   float score;
 
   QTimer timer;
   QTime time;
-
-  Player* m_player;
 
  public:
   explicit OpenGLWidget(QWidget* parent = nullptr);
@@ -54,10 +53,8 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void paintGL();
 
   void keyPressEvent(QKeyEvent* event);
-  void keyReleaseEvent(QKeyEvent* event);
 
  signals:
-  void updateHitsLabel(QString);
 
  public slots:
   void animate();

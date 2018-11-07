@@ -28,13 +28,15 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     openglwidget.cpp \
-    player.cpp
+    player.cpp \
+    obstacle.cpp
 
 HEADERS += \
         mainwindow.h \
     openglwidget.h \
     openglwidget.h \
-    player.h
+    player.h \
+    obstacle.h
 
 FORMS += \
         mainwindow.ui
