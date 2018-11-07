@@ -20,14 +20,16 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
   GLuint shaderProgram;
 
-  float playerPosYOffset;  // Player displacement along Y axis
-  float playerPosY;        // Current player Y position
+  float playerVelocityY;
+  float playerVelocityX;
 
-  float targetPosYOffset;  // Target displacement along Y axis
-  float targetPosY;        // Current target Y position
+  float gravity;
 
-  bool jumping;  // Whether the projectile is being animated
-  int numHits;   // Number of hits
+  float playerPosY;
+  float obstaclePosX;
+
+  bool jumping;
+  int score;
 
   QTimer timer;
   QTime time;

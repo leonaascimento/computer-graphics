@@ -1,15 +1,17 @@
 #include "openglwidget.h"
 
 OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
-  playerPosYOffset = 0;
-  playerPosY = 0;
+  playerVelocityY = 0;
+  playerVelocityX = -2.0f;
 
-  targetPosYOffset = -2.0f;
-  targetPosY = 0;
+  gravity = 20.0f;
+
+  playerPosY = 0;
+  obstaclePosX = 0;
 
   jumping = false;
 
-  numHits = 0;
+  score = 0;
 }
 
 OpenGLWidget::~OpenGLWidget() {}
@@ -35,24 +37,35 @@ void OpenGLWidget::resizeGL(int width, int height) {
 }
 
 void OpenGLWidget::paintGL() {
+  QPainter painter(this);
+  painter.beginNativePainting();
   glClear(GL_COLOR_BUFFER_BIT);
 
-  GLuint locScaling = glGetUniformLocation(shaderProgram, "scaling");
-  GLuint locTranslation = glGetUniformLocation(shaderProgram, "translation");
+  GLint locScaling = glGetUniformLocation(shaderProgram, "scaling");
+  GLint locTranslation = glGetUniformLocation(shaderProgram, "translation");
 
   glUseProgram(shaderProgram);
 
   glBindVertexArray(vao);
 
   // Player
-  glUniform4f(locTranslation, -0.8, playerPosY, 0, 0);
-  glUniform1f(locScaling, 0.2);
-  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0);
+  glUniform4f(locTranslation, -0.8f, playerPosY, 0, 0);
+  glUniform1f(locScaling, 0.2f);
+  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
   // Target
-  glUniform4f(locTranslation, targetPosY, -0.8, 0, 0);
-  glUniform1f(locScaling, 0.2);
-  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0);
+  glUniform4f(locTranslation, obstaclePosX, -0.8f, 0, 0);
+  glUniform1f(locScaling, 0.2f);
+  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
+
+  glBindVertexArray(0);
+  glUseProgram(0);
+
+  painter.endNativePainting();
+
+  painter.setPen(Qt::white);
+  painter.setFont(QFont("Arial", 12));
+  painter.drawText(rect(), Qt::AlignLeft, "SCORE");
 }
 
 void OpenGLWidget::createShaders() {
@@ -73,9 +86,9 @@ void OpenGLWidget::createShaders() {
   std::string stdStringVs = qtStringVs.toStdString();
   std::string stdStringFs = qtStringFs.toStdString();
 
-  qDebug("%s", stdStringVs.c_str());
-  qDebug("length: %i, size: %i, strlen:%i", stdStringVs.length(),
-         stdStringVs.size(), strlen(stdStringVs.c_str()));
+  // qDebug("%s", stdStringVs.c_str());
+  // qDebug("length: %i, size: %i, strlen:%i", stdStringVs.length(),
+  // stdStringVs.size(), strlen(stdStringVs.c_str()));
 
   // Create an empty vertex shader handle
   GLuint vertexShader = 0;
@@ -84,7 +97,7 @@ void OpenGLWidget::createShaders() {
   // Send the vertex shader source code to GL
   const GLchar* source = stdStringVs.c_str();
 
-  glShaderSource(vertexShader, 1, &source, 0);
+  glShaderSource(vertexShader, 1, &source, nullptr);
 
   // Compile the vertex shader
   glCompileShader(vertexShader);
@@ -95,7 +108,7 @@ void OpenGLWidget::createShaders() {
     GLint maxLength = 0;
     glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
     // The maxLength includes the NULL character
-    std::vector<GLchar> infoLog(maxLength);
+    std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
     glGetShaderInfoLog(vertexShader, maxLength, &maxLength, &infoLog[0]);
     qDebug("%s", &infoLog[0]);
 
@@ -110,7 +123,7 @@ void OpenGLWidget::createShaders() {
   // Send the fragment shader source code to GL
   // Note that std::string's .c_str is NULL character terminated.
   source = stdStringFs.c_str();
-  glShaderSource(fragmentShader, 1, &source, 0);
+  glShaderSource(fragmentShader, 1, &source, nullptr);
 
   // Compile the fragment shader
   glCompileShader(fragmentShader);
@@ -120,7 +133,7 @@ void OpenGLWidget::createShaders() {
     GLint maxLength = 0;
     glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
 
-    std::vector<GLchar> infoLog(maxLength);
+    std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
     glGetShaderInfoLog(fragmentShader, maxLength, &maxLength, &infoLog[0]);
     qDebug("%s", &infoLog[0]);
 
@@ -143,13 +156,13 @@ void OpenGLWidget::createShaders() {
 
   // Note the different functions here: glGetProgram* instead of glGetShader*.
   GLint isLinked = 0;
-  glGetProgramiv(shaderProgram, GL_LINK_STATUS, (int*)&isLinked);
+  glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinked);
   if (isLinked == GL_FALSE) {
     GLint maxLength = 0;
     glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &maxLength);
 
     // The maxLength includes the NULL character
-    std::vector<GLchar> infoLog(maxLength);
+    std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
     glGetProgramInfoLog(shaderProgram, maxLength, &maxLength, &infoLog[0]);
     qDebug("%s", &infoLog[0]);
 
@@ -220,6 +233,8 @@ void OpenGLWidget::createVBOs() {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * sizeof(unsigned int),
                indices.get(), GL_DYNAMIC_DRAW);
+
+  glBindVertexArray(0);
 }
 
 void OpenGLWidget::destroyVBOs() {
@@ -237,41 +252,27 @@ void OpenGLWidget::destroyVBOs() {
 void OpenGLWidget::animate() {
   float elapsedTime = time.restart() / 1000.0f;
 
-  // Change player Y position
-  playerPosY += playerPosYOffset * elapsedTime;
+  // qDebug("playerVelocityY %f", static_cast<GLdouble>(playerVelocityY));
+  // qDebug("playerPosY %f", static_cast<GLdouble>(playerPosY));
 
-  // Check player bounds
-  if (playerPosY < -0.8f)
-    playerPosY = -0.8f;
-  if (playerPosY > 0.8f)
-    playerPosY = 0.8f;
+  // Update obstacle position
+  obstaclePosX += playerVelocityX * elapsedTime;
 
-  // Update target
-  targetPosY += targetPosYOffset * elapsedTime;
-
-  if (targetPosYOffset > 0) {
-    targetPosYOffset = -targetPosYOffset;
-  } else if (targetPosYOffset < 0) {
-    if (targetPosY < -1.8f) {
-      targetPosY = 1.0f;
-      targetPosYOffset = -targetPosYOffset;
-    }
+  if (obstaclePosX < -1.8f) {
+    obstaclePosX = 1.0f;
   }
 
-  // Update projectile
+  // Update player position
+  playerPosY += playerVelocityY * elapsedTime;
+  playerVelocityY += -gravity * elapsedTime;
+
   if (jumping) {
-    // move up
-    playerPosYOffset += 3.0f * elapsedTime;
-
-    // move down
-    if (playerPosYOffset > 1.0f) {
+    if (playerVelocityY <= 0)
       jumping = false;
-    }
   } else {
-    playerPosYOffset -= 3.0f * elapsedTime;
-
-    if (playerPosYOffset < -1.0f) {
-      playerPosYOffset = -1.0f;
+    if (playerPosY < -0.8f) {
+      playerPosY = -0.8f;
+      playerVelocityY = 0;
     }
   }
 
@@ -280,16 +281,10 @@ void OpenGLWidget::animate() {
 
 // Strong focus is required
 void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
-  if (event->key() == Qt::Key_Up || event->key() == Qt::Key_W)
-    playerPosYOffset = 2.0f;
-
-  if (event->key() == Qt::Key_Down || event->key() == Qt::Key_S)
-    playerPosYOffset = -2.0f;
-
   if (event->key() == Qt::Key_Space) {
-    if (!jumping) {
+    if (playerPosY <= -0.8f) {
       jumping = true;
-      playerPosYOffset = 0.7f;
+      playerVelocityY = 5.0f;
     }
   }
 
@@ -298,10 +293,4 @@ void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
   }
 }
 
-void OpenGLWidget::keyReleaseEvent(QKeyEvent* event) {
-  if (event->key() == Qt::Key_Up || event->key() == Qt::Key_W)
-    playerPosYOffset = 0;
-
-  if (event->key() == Qt::Key_Down || event->key() == Qt::Key_S)
-    playerPosYOffset = 0;
-}
+void OpenGLWidget::keyReleaseEvent(QKeyEvent* event) {}
