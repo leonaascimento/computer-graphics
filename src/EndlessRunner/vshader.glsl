@@ -1,4 +1,4 @@
-#version 410
+#version 400
 
 layout (location = 0) in vec4 position;
 

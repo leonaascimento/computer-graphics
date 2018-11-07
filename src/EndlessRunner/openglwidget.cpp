@@ -19,6 +19,14 @@ void OpenGLWidget::newGame() {
   obstacle->colliderHeight = 0.2f;
   obstacle->colliderWidth = 0.2f;
 
+  cloud = new Obstacle;
+  cloud->positionX = 0.5f;
+  cloud->positionY = 0.3f;
+  cloud->velocityX = -0.1f;
+  cloud->scale = 0.05f;
+  cloud->colliderHeight = 0;
+  cloud->colliderWidth = 0;
+
   gameScore = 0;
 }
 
@@ -64,6 +72,11 @@ void OpenGLWidget::paintGL() {
   // Draw Obstacle
   glUniform2f(translationId, obstacle->positionX, obstacle->positionY);
   glUniform1f(scalingId, obstacle->scale);
+  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
+
+  // Draw Cloud
+  glUniform2f(translationId, cloud->positionX, cloud->positionY);
+  glUniform1f(scalingId, cloud->scale);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
   glBindVertexArray(0);
@@ -247,8 +260,10 @@ void OpenGLWidget::update() {
   if (player->state != Player::Dead) {
     obstacle->update(deltaTime);
     player->update(deltaTime);
+    cloud->update(deltaTime);
 
     obstacle->velocityX -= 0.1f * deltaTime;
+    cloud->velocityX -= 0.1f * deltaTime;
 
     // Collision
     if (std::fabs(obstacle->positionX - player->positionX) <=

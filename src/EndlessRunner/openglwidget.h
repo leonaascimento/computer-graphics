@@ -32,6 +32,7 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
  private:
   Player* player;
   Obstacle* obstacle;
+  Obstacle* cloud;
 
   GLuint shaderProgramId;
   GLuint vaoId;
