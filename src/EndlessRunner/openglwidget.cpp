@@ -1,10 +1,8 @@
 #include "openglwidget.h"
 
-OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {
-  reset();
-}
+OpenGLWidget::OpenGLWidget(QWidget* parent) : QOpenGLWidget(parent) {}
 
-void OpenGLWidget::reset() {
+void OpenGLWidget::newGame() {
   player = new Player;
   player->positionX = -0.8f;
   player->positionY = -0.8f;
@@ -21,7 +19,7 @@ void OpenGLWidget::reset() {
   obstacle->colliderHeight = 0.2f;
   obstacle->colliderWidth = 0.2f;
 
-  score = 0;
+  gameScore = 0;
 }
 
 OpenGLWidget::~OpenGLWidget() {}
@@ -36,6 +34,7 @@ void OpenGLWidget::initializeGL() {
 
   createShaders();
   createVBOs();
+  newGame();
 
   connect(&updateTimer, SIGNAL(timeout()), this, SLOT(update()));
   updateTimer.start(0);
@@ -51,11 +50,11 @@ void OpenGLWidget::paintGL() {
   painter.beginNativePainting();
   glClear(GL_COLOR_BUFFER_BIT);
 
-  GLint scalingId = glGetUniformLocation(shaderProgram, "scaling");
-  GLint translationId = glGetUniformLocation(shaderProgram, "translation");
+  GLint scalingId = glGetUniformLocation(shaderProgramId, "scaling");
+  GLint translationId = glGetUniformLocation(shaderProgramId, "translation");
 
-  glUseProgram(shaderProgram);
-  glBindVertexArray(vao);
+  glUseProgram(shaderProgramId);
+  glBindVertexArray(vaoId);
 
   // Draw Player
   glUniform2f(translationId, player->positionX, player->positionY);
@@ -74,9 +73,9 @@ void OpenGLWidget::paintGL() {
 
   painter.setPen(Qt::white);
   painter.setFont(QFont("Arial", 12));
-  painter.drawText(
-      rect(), Qt::AlignRight,
-      QString("%1").arg(QString::number(static_cast<int>(std::floor(score)))));
+  painter.drawText(rect(), Qt::AlignRight,
+                   QString("%1").arg(QString::number(
+                       static_cast<int>(std::floor(gameScore)))));
 
   if (player->state == Player::Dead) {
     painter.setPen(Qt::red);
@@ -162,35 +161,35 @@ void OpenGLWidget::createShaders() {
   // Vertex and fragment shaders are successfully compiled.
   // Now time to link them together into a program.
   // Get a program object.
-  shaderProgram = glCreateProgram();
+  shaderProgramId = glCreateProgram();
 
   // Attach our shaders to our program
-  glAttachShader(shaderProgram, vertexShader);
-  glAttachShader(shaderProgram, fragmentShader);
+  glAttachShader(shaderProgramId, vertexShader);
+  glAttachShader(shaderProgramId, fragmentShader);
 
   // Link our program
-  glLinkProgram(shaderProgram);
+  glLinkProgram(shaderProgramId);
 
   // Note the different functions here: glGetProgram* instead of glGetShader*.
   GLint isLinked = 0;
-  glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinked);
+  glGetProgramiv(shaderProgramId, GL_LINK_STATUS, &isLinked);
   if (isLinked == GL_FALSE) {
     GLint maxLength = 0;
-    glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &maxLength);
+    glGetProgramiv(shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength);
 
     // The maxLength includes the NULL character
     std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
-    glGetProgramInfoLog(shaderProgram, maxLength, &maxLength, &infoLog[0]);
+    glGetProgramInfoLog(shaderProgramId, maxLength, &maxLength, &infoLog[0]);
     qDebug("%s", &infoLog[0]);
 
-    glDeleteProgram(shaderProgram);
+    glDeleteProgram(shaderProgramId);
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
     return;
   }
 
-  glDetachShader(shaderProgram, vertexShader);
-  glDetachShader(shaderProgram, fragmentShader);
+  glDetachShader(shaderProgramId, vertexShader);
+  glDetachShader(shaderProgramId, fragmentShader);
 
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
@@ -201,69 +200,45 @@ void OpenGLWidget::createShaders() {
 
 void OpenGLWidget::destroyShaders() {
   makeCurrent();
-  glDeleteProgram(shaderProgram);
+  glDeleteProgram(shaderProgramId);
 }
 
 void OpenGLWidget::createVBOs() {
   makeCurrent();
   destroyVBOs();
 
-  vertices = std::make_unique<QVector4D[]>(4);
-  colors = std::make_unique<QVector4D[]>(4);
-  indices = std::make_unique<unsigned int[]>(2 * 3);
+  vertices = {QVector4D(-1, -1, 0, 1), QVector4D(1, -1, 0, 1),
+              QVector4D(1, 1, 0, 1), QVector4D(-1, 1, 0, 1)};
+  indices = {0, 1, 2, 2, 3, 0};
 
-  vertices[0] = QVector4D(-1, -1, 0, 1);
-  vertices[1] = QVector4D(1, -1, 0, 1);
-  vertices[2] = QVector4D(1, 1, 0, 1);
-  vertices[3] = QVector4D(-1, 1, 0, 1);
+  glGenVertexArrays(1, &vaoId);
+  glBindVertexArray(vaoId);
 
-  colors[0] = QVector4D(1, 0, 0, 1);  // red
-  colors[1] = QVector4D(0, 1, 0, 1);  // green
-  colors[2] = QVector4D(0, 0, 1, 1);  // blue
-  colors[3] = QVector4D(1, 1, 0, 1);  // yellow
-
-  indices[0] = 0;
-  indices[1] = 1;
-  indices[2] = 2;
-  indices[3] = 2;
-  indices[4] = 3;
-  indices[5] = 0;
-
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
-
-  glGenBuffers(1, &vboVertices);
-  glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
-  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(QVector4D), vertices.get(),
-               GL_STATIC_DRAW);
+  glGenBuffers(1, &vboId);
+  glBindBuffer(GL_ARRAY_BUFFER, vboId);
+  glBufferData(GL_ARRAY_BUFFER,
+               vertices.size() * static_cast<GLint>(sizeof(QVector4D)),
+               vertices.data(), GL_STATIC_DRAW);
   glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
   glEnableVertexAttribArray(0);
 
-  glGenBuffers(1, &vboColors);
-  glBindBuffer(GL_ARRAY_BUFFER, vboColors);
-  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(QVector4D), colors.get(),
-               GL_STATIC_DRAW);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
-  glEnableVertexAttribArray(1);
-
-  glGenBuffers(1, &vboIndices);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * sizeof(unsigned int),
-               indices.get(), GL_DYNAMIC_DRAW);
+  glGenBuffers(1, &iboId);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboId);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+               indices.size() * static_cast<GLint>(sizeof(unsigned int)),
+               indices.data(), GL_DYNAMIC_DRAW);
 
   glBindVertexArray(0);
 }
 
 void OpenGLWidget::destroyVBOs() {
-  glDeleteBuffers(1, &vboVertices);
-  glDeleteBuffers(1, &vboColors);
-  glDeleteBuffers(1, &vboIndices);
-  glDeleteVertexArrays(1, &vao);
+  glDeleteBuffers(1, &iboId);
+  glDeleteBuffers(1, &vboId);
+  glDeleteVertexArrays(1, &vaoId);
 
-  vboVertices = 0;
-  vboIndices = 0;
-  vboColors = 0;
-  vao = 0;
+  iboId = 0;
+  vboId = 0;
+  vaoId = 0;
 }
 
 void OpenGLWidget::update() {
@@ -284,7 +259,7 @@ void OpenGLWidget::update() {
       }
     }
 
-    score += 10 * deltaTime;
+    gameScore += 10 * deltaTime;
   }
 
   QOpenGLWidget::update();
@@ -295,7 +270,7 @@ void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
   if (event->key() == Qt::Key_Space)
     player->jump();
   else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
-    reset();
+    newGame();
   else if (event->key() == Qt::Key_Escape)
     QApplication::quit();
 }

@@ -11,26 +11,6 @@
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Q_OBJECT
 
-  Player* player;
-  Obstacle* obstacle;
-
-  GLuint vboVertices = 0;
-  GLuint vboColors = 0;
-  GLuint vboIndices = 0;
-
-  GLuint vao = 0;
-
-  std::unique_ptr<QVector4D[]> vertices = nullptr;
-  std::unique_ptr<QVector4D[]> colors = nullptr;
-  std::unique_ptr<unsigned int[]> indices = nullptr;
-
-  GLuint shaderProgram;
-
-  float score;
-
-  QTimer updateTimer;
-  QTime stopwatch;
-
  public:
   explicit OpenGLWidget(QWidget* parent = nullptr);
   ~OpenGLWidget();
@@ -47,7 +27,24 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void paintGL();
 
   void keyPressEvent(QKeyEvent* event);
-  void reset();
+  void newGame();
+
+ private:
+  Player* player;
+  Obstacle* obstacle;
+
+  GLuint shaderProgramId;
+  GLuint vaoId;
+  GLuint vboId;
+  GLuint iboId;
+
+  QVector<QVector4D> vertices;
+  QVector<unsigned int> indices;
+
+  float gameScore;
+
+  QTimer updateTimer;
+  QTime stopwatch;
 
  signals:
 
