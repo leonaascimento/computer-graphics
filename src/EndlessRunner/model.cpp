@@ -6,7 +6,6 @@ Model::Model(QOpenGLWidget* glWidget) {
 
 Model::~Model() {
   destroy();
-  delete m_glWidget;
   m_glWidget = nullptr;
 }
 

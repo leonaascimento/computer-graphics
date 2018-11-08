@@ -30,7 +30,9 @@ SOURCES += \
     openglwidget.cpp \
     player.cpp \
     obstacle.cpp \
-    model.cpp
+    model.cpp \
+    shaderprogram.cpp \
+    star.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -38,7 +40,9 @@ HEADERS += \
     openglwidget.h \
     player.h \
     obstacle.h \
-    model.h
+    model.h \
+    shaderprogram.h \
+    star.h
 
 FORMS += \
         mainwindow.ui

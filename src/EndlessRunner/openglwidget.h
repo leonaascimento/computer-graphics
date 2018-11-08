@@ -8,6 +8,8 @@
 #include <model.h>
 #include <obstacle.h>
 #include <player.h>
+#include <shaderprogram.h>
+#include <star.h>
 
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Q_OBJECT
@@ -17,7 +19,7 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   ~OpenGLWidget();
 
   void createShaders();
-  void createVBOs();
+  void createModels();
   void destroyShaders();
 
  protected:
@@ -31,12 +33,11 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
  private:
   Player* player;
   Obstacle* obstacle;
-  Obstacle* cloud;
+  QVector<Star> stars;
 
-  Model* star;
-  Model* square;
-
-  GLuint shaderProgramId;
+  ShaderProgram* defaultShaderProgram;
+  Model* starModel;
+  Model* squareModel;
 
   float gameScore;
 

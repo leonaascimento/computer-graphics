@@ -19,13 +19,18 @@ void OpenGLWidget::newGame() {
   obstacle->colliderHeight = 0.2f;
   obstacle->colliderWidth = 0.2f;
 
-  cloud = new Obstacle;
-  cloud->positionX = 0.5f;
-  cloud->positionY = 0.3f;
-  cloud->velocityX = -0.1f;
-  cloud->scale = 0.05f;
-  cloud->colliderHeight = 0;
-  cloud->colliderWidth = 0;
+  stars.resize(10);
+  for (int i = 0; i < stars.size(); i++) {
+    float x = static_cast<float>(std::rand() % 18001 - 9000.0f) / 10000.0f;
+    float y = static_cast<float>(std::rand() % 18001 - 9000.0f) / 10000.0f;
+
+    Star star;
+    star.positionX = x;
+    star.positionY = y + 0.2f;
+    star.velocityX = -0.1f;
+    star.scale = 0.05f;
+    stars[i] = star;
+  }
 
   gameScore = 0;
 }
@@ -41,7 +46,7 @@ void OpenGLWidget::initializeGL() {
   glClearColor(0, 0, 0, 1);
 
   createShaders();
-  createVBOs();
+  createModels();
   newGame();
 
   connect(&updateTimer, SIGNAL(timeout()), this, SLOT(update()));
@@ -58,29 +63,33 @@ void OpenGLWidget::paintGL() {
   painter.beginNativePainting();
   glClear(GL_COLOR_BUFFER_BIT);
 
-  GLint scalingId = glGetUniformLocation(shaderProgramId, "scaling");
-  GLint translationId = glGetUniformLocation(shaderProgramId, "translation");
+  GLint scalingId = defaultShaderProgram->getUniformLocation("scaling");
+  GLint translationId = defaultShaderProgram->getUniformLocation("translation");
 
-  glUseProgram(shaderProgramId);
-  star->beginDraw();
+  defaultShaderProgram->beginUse();
 
-  // Draw Player
+  squareModel->beginDraw();
+  // Draw player square
   glUniform2f(translationId, player->positionX, player->positionY);
   glUniform1f(scalingId, player->scale);
-  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
+  squareModel->draw();
 
-  // Draw Obstacle
+  // Draw obstacle square
   glUniform2f(translationId, obstacle->positionX, obstacle->positionY);
   glUniform1f(scalingId, obstacle->scale);
-  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
+  squareModel->draw();
+  squareModel->endDraw();
 
-  // Draw Cloud
-  glUniform2f(translationId, cloud->positionX, cloud->positionY);
-  glUniform1f(scalingId, cloud->scale);
-  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
+  starModel->beginDraw();
+  for (int i = 0; i < stars.size(); i++) {
+    glUniform2f(translationId, stars[i].positionX, stars[i].positionY);
+    glUniform1f(scalingId, stars[i].scale);
+    starModel->draw();
+  }
 
-  star->endDraw();
-  glUseProgram(0);
+  starModel->endDraw();
+
+  defaultShaderProgram->endUse();
 
   painter.endNativePainting();
 
@@ -97,156 +106,18 @@ void OpenGLWidget::paintGL() {
   }
 }
 
-void OpenGLWidget::createShaders() {
-  // makeCurrent();
-  destroyShaders();
-
-  QFile vs(":/shaders/vshader.glsl");
-  QFile fs(":/shaders/fshader.glsl");
-
-  vs.open(QFile::ReadOnly | QFile::Text);
-  fs.open(QFile::ReadOnly | QFile::Text);
-
-  QTextStream streamVs(&vs), streamFs(&fs);
-
-  QString qtStringVs = streamVs.readAll();
-  QString qtStringFs = streamFs.readAll();
-
-  std::string stdStringVs = qtStringVs.toStdString();
-  std::string stdStringFs = qtStringFs.toStdString();
-
-  // qDebug("%s", stdStringVs.c_str());
-  // qDebug("length: %i, size: %i, strlen:%i", stdStringVs.length(),
-  // stdStringVs.size(), strlen(stdStringVs.c_str()));
-
-  // Create an empty vertex shader handle
-  GLuint vertexShader = 0;
-  vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-  // Send the vertex shader source code to GL
-  const GLchar* source = stdStringVs.c_str();
-
-  glShaderSource(vertexShader, 1, &source, nullptr);
-
-  // Compile the vertex shader
-  glCompileShader(vertexShader);
-
-  GLint isCompiled = 0;
-  glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &isCompiled);
-  if (isCompiled == GL_FALSE) {
-    GLint maxLength = 0;
-    glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
-    // The maxLength includes the NULL character
-    std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
-    glGetShaderInfoLog(vertexShader, maxLength, &maxLength, &infoLog[0]);
-    qDebug("%s", &infoLog[0]);
-
-    glDeleteShader(vertexShader);
-    return;
-  }
-
-  // Create an empty fragment shader handle
-  GLuint fragmentShader = 0;
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-  // Send the fragment shader source code to GL
-  // Note that std::string's .c_str is NULL character terminated.
-  source = stdStringFs.c_str();
-  glShaderSource(fragmentShader, 1, &source, nullptr);
-
-  // Compile the fragment shader
-  glCompileShader(fragmentShader);
-
-  glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompiled);
-  if (isCompiled == GL_FALSE) {
-    GLint maxLength = 0;
-    glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
-
-    std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
-    glGetShaderInfoLog(fragmentShader, maxLength, &maxLength, &infoLog[0]);
-    qDebug("%s", &infoLog[0]);
-
-    glDeleteShader(fragmentShader);
-    glDeleteShader(vertexShader);
-    return;
-  }
-
-  // Vertex and fragment shaders are successfully compiled.
-  // Now time to link them together into a program.
-  // Get a program object.
-  shaderProgramId = glCreateProgram();
-
-  // Attach our shaders to our program
-  glAttachShader(shaderProgramId, vertexShader);
-  glAttachShader(shaderProgramId, fragmentShader);
-
-  // Link our program
-  glLinkProgram(shaderProgramId);
-
-  // Note the different functions here: glGetProgram* instead of glGetShader*.
-  GLint isLinked = 0;
-  glGetProgramiv(shaderProgramId, GL_LINK_STATUS, &isLinked);
-  if (isLinked == GL_FALSE) {
-    GLint maxLength = 0;
-    glGetProgramiv(shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength);
-
-    // The maxLength includes the NULL character
-    std::vector<GLchar> infoLog(static_cast<GLuint>(maxLength));
-    glGetProgramInfoLog(shaderProgramId, maxLength, &maxLength, &infoLog[0]);
-    qDebug("%s", &infoLog[0]);
-
-    glDeleteProgram(shaderProgramId);
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-    return;
-  }
-
-  glDetachShader(shaderProgramId, vertexShader);
-  glDetachShader(shaderProgramId, fragmentShader);
-
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentShader);
-
-  vs.close();
-  fs.close();
-}
-
-void OpenGLWidget::destroyShaders() {
-  makeCurrent();
-  glDeleteProgram(shaderProgramId);
-}
-
-void OpenGLWidget::createVBOs() {
-  star = new Model(this);
-  square = new Model(this);
-
-  QVector<QVector4D> starVertices = {QVector4D(0, sqrtf(3) / 3, 0, 1),
-                                     QVector4D(0.5, -sqrtf(3) / 6, 0, 1),
-                                     QVector4D(-0.5, -sqrtf(3) / 6, 0, 1),
-                                     QVector4D(0, -sqrtf(3) / 3, 0, 1),
-                                     QVector4D(0.5, sqrtf(3) / 6, 0, 1),
-                                     QVector4D(-0.5, sqrtf(3) / 6, 0, 1)};
-  QVector<GLuint> starIndices = {0, 1, 2, 3, 4, 5};
-
-  QVector<QVector4D> squareVertices = {
-      QVector4D(-1, -1, 0, 1), QVector4D(1, -1, 0, 1), QVector4D(1, 1, 0, 1),
-      QVector4D(-1, 1, 0, 1)};
-  QVector<GLuint> squareIndices = {0, 1, 2, 2, 3, 0};
-
-  star->create(starVertices, starIndices);
-  square->create(squareVertices, squareIndices);
-}
-
 void OpenGLWidget::update() {
   float deltaTime = stopwatch.restart() / 1000.0f;
 
   if (player->state != Player::Dead) {
-    obstacle->update(deltaTime);
     player->update(deltaTime);
-    cloud->update(deltaTime);
-
+    obstacle->update(deltaTime);
     obstacle->velocityX -= 0.1f * deltaTime;
-    cloud->velocityX -= 0.1f * deltaTime;
+
+    for (int i = 0; i < stars.size(); i++) {
+      stars[i].update(deltaTime);
+      stars[i].velocityX -= 0.1f * deltaTime;
+    }
 
     // Collision
     if (std::fabs(obstacle->positionX - player->positionX) <=
@@ -271,4 +142,31 @@ void OpenGLWidget::keyPressEvent(QKeyEvent* event) {
     newGame();
   else if (event->key() == Qt::Key_Escape)
     QApplication::quit();
+}
+
+void OpenGLWidget::createShaders() {
+  defaultShaderProgram = new ShaderProgram(this);
+  defaultShaderProgram->create(":/shaders/vshader.glsl",
+                               ":/shaders/fshader.glsl");
+}
+
+void OpenGLWidget::createModels() {
+  starModel = new Model(this);
+  squareModel = new Model(this);
+
+  QVector<QVector4D> starVertices = {QVector4D(0, sqrtf(3) / 3, 0, 1),
+                                     QVector4D(0.5, -sqrtf(3) / 6, 0, 1),
+                                     QVector4D(-0.5, -sqrtf(3) / 6, 0, 1),
+                                     QVector4D(0, -sqrtf(3) / 3, 0, 1),
+                                     QVector4D(0.5, sqrtf(3) / 6, 0, 1),
+                                     QVector4D(-0.5, sqrtf(3) / 6, 0, 1)};
+  QVector<GLuint> starIndices = {0, 1, 2, 3, 4, 5};
+
+  QVector<QVector4D> squareVertices = {
+      QVector4D(-1, -1, 0, 1), QVector4D(1, -1, 0, 1), QVector4D(1, 1, 0, 1),
+      QVector4D(-1, 1, 0, 1)};
+  QVector<GLuint> squareIndices = {0, 1, 2, 2, 3, 0};
+
+  starModel->create(starVertices, starIndices);
+  squareModel->create(squareVertices, squareIndices);
 }
