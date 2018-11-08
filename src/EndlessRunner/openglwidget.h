@@ -5,6 +5,7 @@
 #include <QOpenGLWidget>
 #include <QtOpenGL>
 
+#include <model.h>
 #include <obstacle.h>
 #include <player.h>
 
@@ -15,10 +16,8 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   explicit OpenGLWidget(QWidget* parent = nullptr);
   ~OpenGLWidget();
 
-  void createVBOs();
   void createShaders();
-
-  void destroyVBOs();
+  void createVBOs();
   void destroyShaders();
 
  protected:
@@ -34,13 +33,10 @@ class OpenGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   Obstacle* obstacle;
   Obstacle* cloud;
 
-  GLuint shaderProgramId;
-  GLuint vaoId;
-  GLuint vboId;
-  GLuint iboId;
+  Model* star;
+  Model* square;
 
-  QVector<QVector4D> vertices;
-  QVector<unsigned int> indices;
+  GLuint shaderProgramId;
 
   float gameScore;
 

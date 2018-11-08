@@ -62,7 +62,7 @@ void OpenGLWidget::paintGL() {
   GLint translationId = glGetUniformLocation(shaderProgramId, "translation");
 
   glUseProgram(shaderProgramId);
-  glBindVertexArray(vaoId);
+  star->beginDraw();
 
   // Draw Player
   glUniform2f(translationId, player->positionX, player->positionY);
@@ -79,7 +79,7 @@ void OpenGLWidget::paintGL() {
   glUniform1f(scalingId, cloud->scale);
   glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, nullptr);
 
-  glBindVertexArray(0);
+  star->endDraw();
   glUseProgram(0);
 
   painter.endNativePainting();
@@ -217,41 +217,24 @@ void OpenGLWidget::destroyShaders() {
 }
 
 void OpenGLWidget::createVBOs() {
-  makeCurrent();
-  destroyVBOs();
+  star = new Model(this);
+  square = new Model(this);
 
-  vertices = {QVector4D(-1, -1, 0, 1), QVector4D(1, -1, 0, 1),
-              QVector4D(1, 1, 0, 1), QVector4D(-1, 1, 0, 1)};
-  indices = {0, 1, 2, 2, 3, 0};
+  QVector<QVector4D> starVertices = {QVector4D(0, sqrtf(3) / 3, 0, 1),
+                                     QVector4D(0.5, -sqrtf(3) / 6, 0, 1),
+                                     QVector4D(-0.5, -sqrtf(3) / 6, 0, 1),
+                                     QVector4D(0, -sqrtf(3) / 3, 0, 1),
+                                     QVector4D(0.5, sqrtf(3) / 6, 0, 1),
+                                     QVector4D(-0.5, sqrtf(3) / 6, 0, 1)};
+  QVector<GLuint> starIndices = {0, 1, 2, 3, 4, 5};
 
-  glGenVertexArrays(1, &vaoId);
-  glBindVertexArray(vaoId);
+  QVector<QVector4D> squareVertices = {
+      QVector4D(-1, -1, 0, 1), QVector4D(1, -1, 0, 1), QVector4D(1, 1, 0, 1),
+      QVector4D(-1, 1, 0, 1)};
+  QVector<GLuint> squareIndices = {0, 1, 2, 2, 3, 0};
 
-  glGenBuffers(1, &vboId);
-  glBindBuffer(GL_ARRAY_BUFFER, vboId);
-  glBufferData(GL_ARRAY_BUFFER,
-               vertices.size() * static_cast<GLint>(sizeof(QVector4D)),
-               vertices.data(), GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
-  glEnableVertexAttribArray(0);
-
-  glGenBuffers(1, &iboId);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboId);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-               indices.size() * static_cast<GLint>(sizeof(unsigned int)),
-               indices.data(), GL_DYNAMIC_DRAW);
-
-  glBindVertexArray(0);
-}
-
-void OpenGLWidget::destroyVBOs() {
-  glDeleteBuffers(1, &iboId);
-  glDeleteBuffers(1, &vboId);
-  glDeleteVertexArrays(1, &vaoId);
-
-  iboId = 0;
-  vboId = 0;
-  vaoId = 0;
+  star->create(starVertices, starIndices);
+  square->create(squareVertices, squareIndices);
 }
 
 void OpenGLWidget::update() {
